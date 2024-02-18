@@ -10,9 +10,13 @@ import org.apache.spark.sql.SparkSession;
 
 import uk.ac.gla.dcs.bigdata.providedfunctions.NewsFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedfunctions.QueryFormaterMap;
+import uk.ac.gla.dcs.bigdata.providedstructures.ContentItem;
 import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
+import uk.ac.gla.dcs.bigdata.providedutilities.DPHScorer;
+import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
+import uk.ac.gla.dcs.bigdata.studentfunctions.NewsFilterFlatMap;
 
 /**
  * This is the main class where your Spark topology should be specified.
@@ -98,8 +102,34 @@ public class AssessedExercise {
 		//----------------------------------------------------------------
 		// Your Spark Topology should be defined here
 		//----------------------------------------------------------------
-		
-		
+		//news filter
+		long numDocs = news.count();
+		System.out.println("number of news: "+ numDocs);
+
+		NewsFilterFlatMap newsFilterFlatMap = new NewsFilterFlatMap();
+
+		Dataset<NewsArticle> filteredNews = news.flatMap(newsFilterFlatMap, Encoders.bean(NewsArticle.class));
+		long numFilteredDocs = filteredNews.count();
+		System.out.println("number of filtered news: "+ numFilteredDocs);
+
+		List<NewsArticle> filteredNewsList = filteredNews.collectAsList();
+
+		queries.show();
+		TextPreProcessor processor = new TextPreProcessor();
+		for (int articleIndex = 0; articleIndex < 5; articleIndex++) {
+			System.out.println("article" + articleIndex);
+			NewsArticle article = filteredNewsList.get(articleIndex);
+			List<ContentItem> contentItems = article.getContents();
+			for (ContentItem contentItem : contentItems) {
+				System.out.println(contentItem.getContent());
+			}
+		}
+
+
+		//DPH
+		DPHScorer dphScorer = new DPHScorer();
+		// DPHScorer.getDPHScore();
+
 		return null; // replace this with the the list of DocumentRanking output by your topology
 	}
 	

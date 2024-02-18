@@ -23,18 +23,18 @@
     <groupId>org.apache.spark</groupId>
     <artifactId>spark-streaming_2.13</artifactId>
     <version>3.2.0</version>
-    <scope>provided</scope>
-</dependency>
+      <!-- <scope>provided</scope> -->
+  </dependency>
 
-<dependency>
-    <groupId>org.apache.spark</groupId>
-    <artifactId>spark-sql_2.13</artifactId>
-    <version>3.2.0</version>
-    <scope>provided</scope>
-</dependency>
+  <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-sql_2.13</artifactId>
+      <version>3.2.0</version>
+      <!--<scope>provided</scope>-->
+  </dependency>
 
 
-<!-- https://mvnrepository.com/artifact/org.terrier/terrier-core -->
+  <!-- https://mvnrepository.com/artifact/org.terrier/terrier-core -->
 <dependency>
     <groupId>org.terrier</groupId>
     <artifactId>terrier-core</artifactId>

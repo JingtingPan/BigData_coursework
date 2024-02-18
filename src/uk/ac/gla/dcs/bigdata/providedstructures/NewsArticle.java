@@ -1,7 +1,9 @@
 package uk.ac.gla.dcs.bigdata.providedstructures;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
+import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
 
 /**
  * Represents a single news article from the source Washington Post Corpus
@@ -11,7 +13,7 @@ import java.util.List;
 public class NewsArticle implements Serializable {
 
 	private static final long serialVersionUID = 7860293794078412243L;
-	
+
 	String id; // unique article identifier
 	String article_url; // url pointing to the online article
 	String title; // article title
@@ -20,20 +22,45 @@ public class NewsArticle implements Serializable {
 	List<ContentItem> contents; // the contents of the article body
 	String type; // type of the article
 	String source; // news provider
-	
-	public NewsArticle() {}
-	
-	public NewsArticle(String id, String article_url, String title, String author, long published_date,
-			List<ContentItem> contents, String type, String source) {
-		super();
-		this.id = id;
-		this.article_url = article_url;
-		this.title = title;
-		this.author = author;
-		this.published_date = published_date;
-		this.contents = contents;
-		this.type = type;
-		this.source = source;
+
+	// New field to store processed contents
+	private List<String> processedContents = new ArrayList<>();
+
+	// Existing constructors, getters, and setters remain unchanged
+
+	public List<String> getProcessedContents() {
+		return processedContents;
+	}
+
+	public void setProcessedContents(List<String> processedContents) {
+		this.processedContents = processedContents;
+	}
+
+	/**
+	 * Processes the title and the first five paragraphs of the article,
+	 * removes stopwords, applies stemming, and stores the result.
+	 * @param processor The text processor to use for content processing.
+	 */
+	public void processContents(TextPreProcessor processor) {
+		if (this.contents == null) {
+			this.processedContents = new ArrayList<>();
+			return;
+		}
+
+		List<String> allProcessedText = new ArrayList<>();
+		// Process title
+		allProcessedText.addAll(processor.process(this.title));
+
+		// Process the first 5 paragraphs
+		int paragraphsProcessed = 0;
+		for (ContentItem item : this.contents) {
+			if ("paragraph".equals(item.getSubtype()) && paragraphsProcessed < 5) {
+				allProcessedText.addAll(processor.process(item.getContent()));
+				paragraphsProcessed++;
+			}
+		}
+
+		this.processedContents = allProcessedText;
 	}
 
 	public String getId() {

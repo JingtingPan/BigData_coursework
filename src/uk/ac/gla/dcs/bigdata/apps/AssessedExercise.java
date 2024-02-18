@@ -10,6 +10,7 @@ import org.apache.spark.sql.SparkSession;
 
 import uk.ac.gla.dcs.bigdata.providedfunctions.NewsFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedfunctions.QueryFormaterMap;
+
 import uk.ac.gla.dcs.bigdata.providedstructures.ContentItem;
 import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
@@ -17,6 +18,11 @@ import uk.ac.gla.dcs.bigdata.providedstructures.Query;
 import uk.ac.gla.dcs.bigdata.providedutilities.DPHScorer;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
 import uk.ac.gla.dcs.bigdata.studentfunctions.NewsFilterFlatMap;
+
+import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
+import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
+import uk.ac.gla.dcs.bigdata.providedstructures.Query;
+
 
 /**
  * This is the main class where your Spark topology should be specified.
@@ -102,6 +108,7 @@ public class AssessedExercise {
 		//----------------------------------------------------------------
 		// Your Spark Topology should be defined here
 		//----------------------------------------------------------------
+
 		//news filter
 		long numDocs = news.count();
 		System.out.println("number of news: "+ numDocs);
@@ -129,6 +136,7 @@ public class AssessedExercise {
 		//DPH
 		DPHScorer dphScorer = new DPHScorer();
 		// DPHScorer.getDPHScore();
+
 
 		return null; // replace this with the the list of DocumentRanking output by your topology
 	}

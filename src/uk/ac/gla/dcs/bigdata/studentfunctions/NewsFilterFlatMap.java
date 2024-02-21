@@ -33,6 +33,8 @@ public class NewsFilterFlatMap implements FlatMapFunction<NewsArticle,NewsArticl
                             paragraphCounter++;
                             if(paragraphCounter <= 5)
                                 newContents.add(contentItem);
+                            // stop word removal
+
                         }
                      }
                      if(paragraphCounter == 0){

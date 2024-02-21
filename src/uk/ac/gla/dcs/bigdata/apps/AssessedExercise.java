@@ -23,6 +23,7 @@ import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
 
+import uk.ac.gla.dcs.bigdata.studentfunctions.StopWordsRemoval;
 
 /**
  * This is the main class where your Spark topology should be specified.
@@ -69,6 +70,7 @@ public class AssessedExercise {
 		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
 		
 		// Call the student's code
+		//StopWordsRemoval swr = new StopWordsRemoval();
 		List<DocumentRanking> results = rankDocuments(spark, queryFile, newsFile);
 		
 		// Close the spark session
@@ -90,10 +92,9 @@ public class AssessedExercise {
 			}
 		}
 		
-		
+
 	}
-	
-	
+
 	
 	public static List<DocumentRanking> rankDocuments(SparkSession spark, String queryFile, String newsFile) {
 		
@@ -110,25 +111,45 @@ public class AssessedExercise {
 		//----------------------------------------------------------------
 
 		//news filter
+		// counting the number of the total articles
 		long numDocs = news.count();
-		System.out.println("number of news: "+ numDocs);
+		System.out.println("number of news: "+ numDocs); // 5000
 
+		// initialise the NewsFilterFlatMap object
 		NewsFilterFlatMap newsFilterFlatMap = new NewsFilterFlatMap();
 
+		// filters the new articles
 		Dataset<NewsArticle> filteredNews = news.flatMap(newsFilterFlatMap, Encoders.bean(NewsArticle.class));
+		// count the number of articles after filtering
 		long numFilteredDocs = filteredNews.count();
-		System.out.println("number of filtered news: "+ numFilteredDocs);
+		System.out.println("number of articles after filtering: "+ numFilteredDocs); // 4798
 
+		// collect the string into list
 		List<NewsArticle> filteredNewsList = filteredNews.collectAsList();
 
+		// display the first few rows of the queries dataset
 		queries.show();
+
+		// initialise the TextPreProcessor object
 		TextPreProcessor processor = new TextPreProcessor();
-		for (int articleIndex = 0; articleIndex < 5; articleIndex++) {
+
+		// iterate the first 5 filtered articles and print the content
+		for (int articleIndex = 0; articleIndex < 2; articleIndex++) {
 			System.out.println("article" + articleIndex);
+
 			NewsArticle article = filteredNewsList.get(articleIndex);
+
 			List<ContentItem> contentItems = article.getContents();
+
 			for (ContentItem contentItem : contentItems) {
+				// Print filtered text
+				//System.out.println("Filtered Text:");
 				System.out.println(contentItem.getContent());
+
+				// data pre-process
+				StopWordsRemoval swr = new StopWordsRemoval();
+				swr.processContentItem(contentItem);
+				System.out.println("=====");
 			}
 		}
 
@@ -138,8 +159,7 @@ public class AssessedExercise {
 		// DPHScorer.getDPHScore();
 
 
-		return null; // replace this with the the list of DocumentRanking output by your topology
+		return null; // replace this with the list of DocumentRanking output by your topology
 	}
-	
 	
 }

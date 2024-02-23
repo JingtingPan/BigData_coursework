@@ -1,6 +1,7 @@
 package uk.ac.gla.dcs.bigdata.apps;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
@@ -8,22 +9,22 @@ import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+import org.apache.spark.util.LongAccumulator;
+import scala.Int;
 import uk.ac.gla.dcs.bigdata.providedfunctions.NewsFormaterMap;
 import uk.ac.gla.dcs.bigdata.providedfunctions.QueryFormaterMap;
 
-import uk.ac.gla.dcs.bigdata.providedstructures.ContentItem;
-import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
-import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
-import uk.ac.gla.dcs.bigdata.providedstructures.Query;
+import uk.ac.gla.dcs.bigdata.providedstructures.*;
 import uk.ac.gla.dcs.bigdata.providedutilities.DPHScorer;
 import uk.ac.gla.dcs.bigdata.providedutilities.TextPreProcessor;
-import uk.ac.gla.dcs.bigdata.studentfunctions.NewsFilterFlatMap;
+import uk.ac.gla.dcs.bigdata.studentfunctions.*;
 
 import uk.ac.gla.dcs.bigdata.providedstructures.DocumentRanking;
 import uk.ac.gla.dcs.bigdata.providedstructures.NewsArticle;
 import uk.ac.gla.dcs.bigdata.providedstructures.Query;
+import uk.ac.gla.dcs.bigdata.studentstructures.DocumentWithLength;
+import uk.ac.gla.dcs.bigdata.studentstructures.QueryWithFrequency;
 
-import uk.ac.gla.dcs.bigdata.studentfunctions.StopWordsRemoval;
 
 /**
  * This is the main class where your Spark topology should be specified.
@@ -97,15 +98,15 @@ public class AssessedExercise {
 
 	
 	public static List<DocumentRanking> rankDocuments(SparkSession spark, String queryFile, String newsFile) {
-		
+
 		// Load queries and news articles
 		Dataset<Row> queriesjson = spark.read().text(queryFile);
 		Dataset<Row> newsjson = spark.read().text(newsFile); // read in files as string rows, one row per article
-		
+
 		// Perform an initial conversion from Dataset<Row> to Query and NewsArticle Java objects
 		Dataset<Query> queries = queriesjson.map(new QueryFormaterMap(), Encoders.bean(Query.class)); // this converts each row into a Query
 		Dataset<NewsArticle> news = newsjson.map(new NewsFormaterMap(), Encoders.bean(NewsArticle.class)); // this converts each row into a NewsArticle
-		
+
 		//----------------------------------------------------------------
 		// Your Spark Topology should be defined here
 		//----------------------------------------------------------------
@@ -115,23 +116,24 @@ public class AssessedExercise {
 		long numDocs = news.count();
 		System.out.println("number of news: "+ numDocs); // 5000
 
+
+		//// initialise the accumulator for total document length
+		LongAccumulator docLengthAccumulator = spark.sparkContext().longAccumulator();
 		// initialise the NewsFilterFlatMap object
-		NewsFilterFlatMap newsFilterFlatMap = new NewsFilterFlatMap();
+		NewsFilterFlatMap newsFilterFlatMap = new NewsFilterFlatMap(docLengthAccumulator);
 
 		// filters the new articles
 		Dataset<NewsArticle> filteredNews = news.flatMap(newsFilterFlatMap, Encoders.bean(NewsArticle.class));
 		// count the number of articles after filtering
 		long numFilteredDocs = filteredNews.count();
+		long totalDocLengthInCorpus = docLengthAccumulator.value();
 		System.out.println("number of articles after filtering: "+ numFilteredDocs); // 4798
-
+		System.out.println("Total term Frequency in corpus: " + totalDocLengthInCorpus );
 		// collect the string into list
 		List<NewsArticle> filteredNewsList = filteredNews.collectAsList();
 
 		// display the first few rows of the queries dataset
 		queries.show();
-
-		// initialise the TextPreProcessor object
-		TextPreProcessor processor = new TextPreProcessor();
 
 		// iterate the first 5 filtered articles and print the content
 		for (int articleIndex = 0; articleIndex < 2; articleIndex++) {
@@ -146,20 +148,68 @@ public class AssessedExercise {
 				//System.out.println("Filtered Text:");
 				System.out.println(contentItem.getContent());
 
-				// data pre-process
-				StopWordsRemoval swr = new StopWordsRemoval();
-				swr.processContentItem(contentItem);
-				System.out.println("=====");
 			}
 		}
 
+		Dataset<QueryWithFrequency> queryWithFrequency = queries.map(new QueryWithFrequencyFormaterMap(), Encoders.bean(QueryWithFrequency.class));
 
-		//DPH
-		DPHScorer dphScorer = new DPHScorer();
-		// DPHScorer.getDPHScore();
+
+		List<QueryWithFrequency> queryList = queryWithFrequency.collectAsList();
+		int termCounts = 0;
+		//iterate the queries
+
+		for(int queryIndex = 0; queryIndex < queryList.size(); queryIndex++){
+			//iterate the terms in a query
+			QueryWithFrequency queryWithFreq = queryList.get(queryIndex);
+			Query query = queryWithFreq.getQuery();
+			List<String> terms = query.getQueryTerms();
+			int[] termsFreq = new int[terms.size()];
+			for(int termIndex = 0; termIndex < terms.size();termIndex++) {
+				String term = terms.get(termIndex);
+
+				LongAccumulator termFrequencyAccumulator = spark.sparkContext().longAccumulator();
+				DocumentStatisticsCalculatorFlatMap docStatsCalculatorFlatMap = new DocumentStatisticsCalculatorFlatMap(termFrequencyAccumulator, term);
+				// 在 flatMap 中应用 DocumentLengthCalculator，以计算每个文档的长度并累加到累加器中
+				Dataset<Integer> docLengths = filteredNews.flatMap(docStatsCalculatorFlatMap, Encoders.INT());
+
+				// 执行操作以触发计算
+				docLengths.count();
+
+				//System.out.println(term);
+				// 在关闭 SparkSession 前获取累加器的值
+				termsFreq[termIndex] = termFrequencyAccumulator.value().intValue();
+				System.out.println("Total term Frequency in corpus: " + termFrequencyAccumulator.value());
+			}
+
+			queryWithFreq.setTotalTermFreqInCorpus(termsFreq);
+			//System.out.println(queryWithFreq.getTotalTermFreqInCorpus()[0]);
+		}
+
+		double averageDocLengthInCorpus = (double) totalDocLengthInCorpus /numFilteredDocs;
+
+
+		Dataset<DocumentWithLength> documentWithFrequency = filteredNews.map(new DocWithFreqFormaterMap(), Encoders.bean(DocumentWithLength.class));
+
+		filteredNews.show();
+		documentWithFrequency.show();
+
+		for(int queryIndex = 0; queryIndex < queryList.size(); queryIndex++){
+			QueryWithFrequency queryWithFreq = queryList.get(queryIndex);
+			int[] totaltermsfreq = queryWithFreq.getTotalTermFreqInCorpus();
+			//convert a single query dph score list for all the docs to a rankedresult dataset
+			DPHCalculatorFlatMap dphCalculatorFlatMap = new DPHCalculatorFlatMap(totaltermsfreq, averageDocLengthInCorpus, numFilteredDocs, queryWithFreq);
+			Dataset<RankedResult> rankedResults = documentWithFrequency.flatMap(dphCalculatorFlatMap, Encoders.bean(RankedResult.class));
+
+
+		}
+
+
+
+
 
 
 		return null; // replace this with the list of DocumentRanking output by your topology
 	}
+
 	
 }

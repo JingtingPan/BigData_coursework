@@ -20,6 +20,9 @@ public class NewsArticle implements Serializable {
 	List<ContentItem> contents; // the contents of the article body
 	String type; // type of the article
 	String source; // news provider
+
+
+
 	
 	public NewsArticle() {}
 	

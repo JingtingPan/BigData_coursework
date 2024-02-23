@@ -44,17 +44,27 @@ public class NewsFilterFlatMap implements FlatMapFunction<NewsArticle,NewsArticl
                      docLength = 0;
                      for(ContentItem contentItem : contents){
                          //check if subtype is null and add to the new item list is subtype is paragraph
-                        if(contentItem.getSubtype() != null && contentItem.getSubtype().equals("paragraph")){
+                        if(contentItem != null && contentItem.getSubtype() != null && contentItem.getSubtype().equals("paragraph")){
+
                             paragraphCounter++;
                             if(paragraphCounter <= 5){
                                 // text pre process
                                 contentList = processor.process(contentItem.getContent());
-                                processedContent = String.join(" ", contentList);
-                                contentItem.setContent(processedContent);
-                                newContents.add(contentItem);
 
-                                //calculate document length
-                                docLength += contentList.size();
+
+                                if (contentList != null) {
+                                    processedContent = String.join(" ", contentList);
+                                    contentItem.setContent(processedContent);
+                                    newContents.add(contentItem);
+                                    //calculate document length
+                                    docLength += contentList.size();
+                                }else{
+                                    //calculate document length
+                                    processedContent = "";
+                                    contentItem.setContent(processedContent);
+                                    newContents.add(contentItem);
+                                    docLength += 0;
+                                }
                             }
 
                         }

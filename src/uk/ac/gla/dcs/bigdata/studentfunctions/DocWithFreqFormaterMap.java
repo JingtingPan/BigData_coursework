@@ -15,6 +15,7 @@ public class DocWithFreqFormaterMap implements MapFunction<NewsArticle, Document
     public DocumentWithLength call(NewsArticle newsArticle) throws Exception {
         List<ContentItem> contents = newsArticle.getContents();
         int docLength = 0;
+        //calculate the document length for each doc
         for(ContentItem contentItem : contents){
             String[] words = contentItem.getContent().split("\\s+");
             docLength += words.length;

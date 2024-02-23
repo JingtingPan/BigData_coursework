@@ -193,13 +193,18 @@ public class AssessedExercise {
 		filteredNews.show();
 		documentWithFrequency.show();
 
+		//iterate through each query to get the first 10 document
 		for(int queryIndex = 0; queryIndex < queryList.size(); queryIndex++){
 			QueryWithFrequency queryWithFreq = queryList.get(queryIndex);
 			int[] totaltermsfreq = queryWithFreq.getTotalTermFreqInCorpus();
 			//convert a single query dph score list for all the docs to a rankedresult dataset
 			DPHCalculatorFlatMap dphCalculatorFlatMap = new DPHCalculatorFlatMap(totaltermsfreq, averageDocLengthInCorpus, numFilteredDocs, queryWithFreq);
-			Dataset<RankedResult> rankedResults = documentWithFrequency.flatMap(dphCalculatorFlatMap, Encoders.bean(RankedResult.class));
 
+			Dataset<RankedResult> rankedResults = documentWithFrequency.flatMap(dphCalculatorFlatMap, Encoders.bean(RankedResult.class));
+			//sorted rankedResult by the score order
+			Dataset<RankedResult> sortedRankedResults = rankedResults.orderBy(rankedResults.col("score").desc());
+
+			sortedRankedResults.show();
 
 		}
 

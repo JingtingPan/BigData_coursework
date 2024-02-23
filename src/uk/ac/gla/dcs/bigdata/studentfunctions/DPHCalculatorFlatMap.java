@@ -47,6 +47,7 @@ public class DPHCalculatorFlatMap implements FlatMapFunction<DocumentWithLength,
         Query query = queryWithFrequency.getQuery();
         List<String> terms = query.getQueryTerms();
         totalDphScore = 0;
+        //iterate through the terms in a single query
         for(int termIndex = 0; termIndex < terms.size();termIndex++) {
 
             String term = terms.get(termIndex);

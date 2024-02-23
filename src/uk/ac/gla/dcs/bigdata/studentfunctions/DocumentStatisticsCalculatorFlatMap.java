@@ -41,6 +41,7 @@ public class DocumentStatisticsCalculatorFlatMap implements FlatMapFunction<News
         for(String term : terms){
 
         }*/
+        //get the term frequency and add to the accumulator
         int termFrequencyInCurrentDocument = calculateTermFrequencyInCurrentDoc(newsArticle, term);
         lengths.add(termFrequencyInCurrentDocument);
         termFrequencyAccumulator.add(termFrequencyInCurrentDocument);
@@ -57,7 +58,7 @@ public class DocumentStatisticsCalculatorFlatMap implements FlatMapFunction<News
         for (ContentItem contentItem : contentItems) {
             paragraph = contentItem.getContent();
             String[] words = paragraph.split("\\W+");
-            // 遍历单词数组，统计指定单词出现的次数
+            // iterate through the string, count the frequency of specific term
             for (String w : words) {
                 if (w.equalsIgnoreCase(term)) {
                     termFrequency++;

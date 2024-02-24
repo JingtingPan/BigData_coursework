@@ -1,6 +1,7 @@
 package uk.ac.gla.dcs.bigdata.apps;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.spark.SparkConf;
@@ -68,7 +69,7 @@ public class AssessedExercise {
 		
 		// Get the location of the input news articles
 		String newsFile = System.getenv("bigdata.news");
-		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
+		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 5000 news articles
 		
 		// Call the student's code
 		//StopWordsRemoval swr = new StopWordsRemoval();
@@ -190,9 +191,8 @@ public class AssessedExercise {
 
 		Dataset<DocumentWithLength> documentWithFrequency = filteredNews.map(new DocWithFreqFormaterMap(), Encoders.bean(DocumentWithLength.class));
 
-		filteredNews.show();
-		documentWithFrequency.show();
 
+		List<DocumentRanking> documentRankingsList = new ArrayList<>();
 		//iterate through each query to get the first 10 document
 		for(int queryIndex = 0; queryIndex < queryList.size(); queryIndex++){
 			QueryWithFrequency queryWithFreq = queryList.get(queryIndex);
@@ -204,16 +204,22 @@ public class AssessedExercise {
 			//sorted rankedResult by the score order
 			Dataset<RankedResult> sortedRankedResults = rankedResults.orderBy(rankedResults.col("score").desc());
 
-			sortedRankedResults.show();
+			List<RankedResult> top30ResultList = sortedRankedResults.limit(30).collectAsList();
+			//create a flatmap with top 30 rankedResult as input
+			RedundancyFilterFlatMap redundancyFilterFlatMap = new RedundancyFilterFlatMap(top30ResultList);
+			Dataset<RankedResult> filteredResults = sortedRankedResults.limit(10).flatMap(redundancyFilterFlatMap, Encoders.bean(RankedResult.class));
+			sortedRankedResults.limit(10).show();
+			filteredResults.show();
+			List<RankedResult> resultList = filteredResults.collectAsList();
+			//create a DocumentRanking object with filtered and sorted RankedResult list
+			DocumentRanking documentRanking = new DocumentRanking(queryWithFreq.getQuery(), resultList);
+
+			documentRankingsList.add(documentRanking);
 
 		}
 
 
-
-
-
-
-		return null; // replace this with the list of DocumentRanking output by your topology
+		return documentRankingsList; // replace this with the list of DocumentRanking output by your topology
 	}
 
 	

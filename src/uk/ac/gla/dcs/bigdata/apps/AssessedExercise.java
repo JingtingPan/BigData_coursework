@@ -69,7 +69,7 @@ public class AssessedExercise {
 		
 		// Get the location of the input news articles
 		String newsFile = System.getenv("bigdata.news");
-		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
+		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 5000 news articles
 		
 		// Call the student's code
 		//StopWordsRemoval swr = new StopWordsRemoval();
@@ -138,8 +138,9 @@ public class AssessedExercise {
 
 		List<QueryWithFrequency> queryList = queryWithFrequency.collectAsList();
 		int termCounts = 0;
-		//iterate the queries
 
+		//calculate the total term frequency for each term
+		//iterate the queries
 		for(int queryIndex = 0; queryIndex < queryList.size(); queryIndex++){
 			//iterate the terms in a query
 			QueryWithFrequency queryWithFreq = queryList.get(queryIndex);
@@ -168,8 +169,9 @@ public class AssessedExercise {
 		}
 
 		queryWithFrequency.show();
-		double averageDocLengthInCorpus = (double) totalDocLengthInCorpus /numFilteredDocs;
 
+		//get the variables to calculate dph score
+		double averageDocLengthInCorpus = (double) totalDocLengthInCorpus /numFilteredDocs;
 
 		Dataset<DocumentWithLength> documentWithLength = filteredNews.map(new DocWithFreqFormaterMap(), Encoders.bean(DocumentWithLength.class));
 

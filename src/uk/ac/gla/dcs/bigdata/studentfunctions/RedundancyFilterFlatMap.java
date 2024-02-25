@@ -36,7 +36,7 @@ public class RedundancyFilterFlatMap implements FlatMapFunction<RankedResult, Ra
     public Iterator<RankedResult> call(RankedResult currentResult) throws Exception {
 
 
-        for (int resultIndex = 0; resultIndex < rankedResultList.size(); resultIndex++){
+        for (int resultIndex = 0; resultIndex < 10; resultIndex++){
                 RankedResult comparedResult = rankedResultList.get(resultIndex);
                 if(textDistanceCalculator == null) textDistanceCalculator = new TextDistanceCalculator();
                 //skip the same doc while looping
@@ -44,12 +44,14 @@ public class RedundancyFilterFlatMap implements FlatMapFunction<RankedResult, Ra
                     if(textDistanceCalculator.similarity(comparedResult.getArticle().getTitle(), currentResult.getArticle().getTitle()) < 0.5){
                         // if there is similar article and the current article have a higher DPH score, keep the current one
                         if(currentResult.getScore() >= comparedResult.getScore()){
+                            System.out.println("Duplicate, keep the current one");
                             List<RankedResult> output = new ArrayList<>(1);
                             output.add(currentResult);
                             return output.iterator();
 
+
                         }else{
-                            List<RankedResult> output = new ArrayList<>(1);
+                            System.out.println("Duplicate, replace current one");
                             RankedResult replaceResult = rankedResultList.get(replaceCounter);
                             //check if the replaceResult is similar to any of the document in top 10 list
                             for(int replaceResultIndex = 0; replaceResultIndex < 10; replaceResultIndex++){
@@ -60,9 +62,10 @@ public class RedundancyFilterFlatMap implements FlatMapFunction<RankedResult, Ra
                                         replaceResult = rankedResultList.get(replaceCounter);
                                         replaceResultIndex = 0;
 
-
                                     }else{
+                                        System.out.println("replace success");
                                         replaceCounter++;
+                                        List<RankedResult> output = new ArrayList<>(1);
                                         output.add(replaceResult);
                                         return output.iterator();
                                     }

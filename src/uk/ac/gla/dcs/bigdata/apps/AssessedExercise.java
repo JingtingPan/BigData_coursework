@@ -69,7 +69,7 @@ public class AssessedExercise {
 		
 		// Get the location of the input news articles
 		String newsFile = System.getenv("bigdata.news");
-		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v2.jl.fix.json"; // default is a sample of 5000 news articles
+		if (newsFile==null) newsFile = "data/TREC_Washington_Post_collection.v3.example.json"; // default is a sample of 5000 news articles
 		
 		// Call the student's code
 		//StopWordsRemoval swr = new StopWordsRemoval();
@@ -128,32 +128,13 @@ public class AssessedExercise {
 		// count the number of articles after filtering
 		long numFilteredDocs = filteredNews.count();
 		long totalDocLengthInCorpus = docLengthAccumulator.value();
-		System.out.println("number of articles after filtering: "+ numFilteredDocs); // 4798
-		System.out.println("Total term Frequency in corpus: " + totalDocLengthInCorpus );
+		System.out.println("number of articles after filtering: "+ numFilteredDocs);
+		System.out.println("Total document length in corpus: " + totalDocLengthInCorpus );
 		// collect the string into list
 		List<NewsArticle> filteredNewsList = filteredNews.collectAsList();
 
-		// display the first few rows of the queries dataset
-		queries.show();
-
-		// iterate the first 5 filtered articles and print the content
-		for (int articleIndex = 0; articleIndex < 2; articleIndex++) {
-			System.out.println("article" + articleIndex);
-
-			NewsArticle article = filteredNewsList.get(articleIndex);
-
-			List<ContentItem> contentItems = article.getContents();
-
-			for (ContentItem contentItem : contentItems) {
-				// Print filtered text
-				//System.out.println("Filtered Text:");
-				System.out.println(contentItem.getContent());
-
-			}
-		}
 
 		Dataset<QueryWithFrequency> queryWithFrequency = queries.map(new QueryWithFrequencyFormaterMap(), Encoders.bean(QueryWithFrequency.class));
-
 
 		List<QueryWithFrequency> queryList = queryWithFrequency.collectAsList();
 		int termCounts = 0;
@@ -170,14 +151,14 @@ public class AssessedExercise {
 
 				LongAccumulator termFrequencyAccumulator = spark.sparkContext().longAccumulator();
 				DocumentStatisticsCalculatorFlatMap docStatsCalculatorFlatMap = new DocumentStatisticsCalculatorFlatMap(termFrequencyAccumulator, term);
-				// 在 flatMap 中应用 DocumentLengthCalculator，以计算每个文档的长度并累加到累加器中
+				//to calculate the term frequency
 				Dataset<Integer> docLengths = filteredNews.flatMap(docStatsCalculatorFlatMap, Encoders.INT());
 
-				// 执行操作以触发计算
+				// execute count to activate action
 				docLengths.count();
 
 				//System.out.println(term);
-				// 在关闭 SparkSession 前获取累加器的值
+				// get the value of accumulator
 				termsFreq[termIndex] = termFrequencyAccumulator.value().intValue();
 				System.out.println("Total term Frequency in corpus: " + termFrequencyAccumulator.value());
 			}
@@ -186,10 +167,11 @@ public class AssessedExercise {
 			//System.out.println(queryWithFreq.getTotalTermFreqInCorpus()[0]);
 		}
 
+		queryWithFrequency.show();
 		double averageDocLengthInCorpus = (double) totalDocLengthInCorpus /numFilteredDocs;
 
 
-		Dataset<DocumentWithLength> documentWithFrequency = filteredNews.map(new DocWithFreqFormaterMap(), Encoders.bean(DocumentWithLength.class));
+		Dataset<DocumentWithLength> documentWithLength = filteredNews.map(new DocWithFreqFormaterMap(), Encoders.bean(DocumentWithLength.class));
 
 
 		List<DocumentRanking> documentRankingsList = new ArrayList<>();
@@ -200,7 +182,7 @@ public class AssessedExercise {
 			//convert a single query dph score list for all the docs to a rankedresult dataset
 			DPHCalculatorFlatMap dphCalculatorFlatMap = new DPHCalculatorFlatMap(totaltermsfreq, averageDocLengthInCorpus, numFilteredDocs, queryWithFreq);
 
-			Dataset<RankedResult> rankedResults = documentWithFrequency.flatMap(dphCalculatorFlatMap, Encoders.bean(RankedResult.class));
+			Dataset<RankedResult> rankedResults = documentWithLength.flatMap(dphCalculatorFlatMap, Encoders.bean(RankedResult.class));
 			//sorted rankedResult by the score order
 			Dataset<RankedResult> sortedRankedResults = rankedResults.orderBy(rankedResults.col("score").desc());
 
@@ -210,7 +192,8 @@ public class AssessedExercise {
 			Dataset<RankedResult> filteredResults = sortedRankedResults.limit(10).flatMap(redundancyFilterFlatMap, Encoders.bean(RankedResult.class));
 			sortedRankedResults.limit(10).show();
 			filteredResults.show();
-			List<RankedResult> resultList = filteredResults.collectAsList();
+
+			List<RankedResult> resultList = filteredResults.sort().collectAsList();
 			//create a DocumentRanking object with filtered and sorted RankedResult list
 			DocumentRanking documentRanking = new DocumentRanking(queryWithFreq.getQuery(), resultList);
 

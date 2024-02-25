@@ -36,25 +36,37 @@ public class RedundancyFilterFlatMap implements FlatMapFunction<RankedResult, Ra
     public Iterator<RankedResult> call(RankedResult currentResult) throws Exception {
 
 
-        for (int resultIndex = counter; resultIndex < rankedResultList.size(); resultIndex++){
+        for (int resultIndex = 0; resultIndex < rankedResultList.size(); resultIndex++){
                 RankedResult comparedResult = rankedResultList.get(resultIndex);
                 if(textDistanceCalculator == null) textDistanceCalculator = new TextDistanceCalculator();
                 //skip the same doc while looping
-                //if (!comparedResult.getDocid().equals(currentResult.getDocid())) {
+                if (!comparedResult.getDocid().equals(currentResult.getDocid())) {
                     if(textDistanceCalculator.similarity(comparedResult.getArticle().getTitle(), currentResult.getArticle().getTitle()) < 0.5){
                         // if there is similar article and the current article have a higher DPH score, keep the current one
                         if(currentResult.getScore() >= comparedResult.getScore()){
                             List<RankedResult> output = new ArrayList<>(1);
                             output.add(currentResult);
-                            counter ++;
                             return output.iterator();
 
                         }else{
                             List<RankedResult> output = new ArrayList<>(1);
                             RankedResult replaceResult = rankedResultList.get(replaceCounter);
-                            output.add(replaceResult);
-                            counter ++;
-                            return output.iterator();
+                            //check if the replaceResult is similar to any of the document in top 10 list
+                            for(int replaceResultIndex = 0; replaceResultIndex < 10; replaceResultIndex++){
+                               comparedResult = rankedResultList.get(replaceResultIndex);
+                                if(textDistanceCalculator == null) textDistanceCalculator = new TextDistanceCalculator();
+                                    if(textDistanceCalculator.similarity(comparedResult.getArticle().getTitle(), replaceResult.getArticle().getTitle()) < 0.5){
+                                        replaceCounter ++;
+                                        replaceResult = rankedResultList.get(replaceCounter);
+                                        replaceResultIndex = 0;
+
+
+                                    }else{
+                                        replaceCounter++;
+                                        output.add(replaceResult);
+                                        return output.iterator();
+                                    }
+                            }
 
                         }
                     }else{
@@ -67,10 +79,11 @@ public class RedundancyFilterFlatMap implements FlatMapFunction<RankedResult, Ra
 
                 }
 
+
+            }
         List<RankedResult> output = new ArrayList<>(0);
         counter ++;
         return output.iterator();
-            //}
 
     }
 }
